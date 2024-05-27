@@ -1,0 +1,150 @@
+import tkinter as tk
+from tkinter import ttk
+from tkinter import filedialog
+
+
+class DrawingApplication:
+
+    def __init__(self, master):
+        self.master = master
+        master.title("Drawing App")
+
+        # Theme options
+        themes = ["Default", "Ocean", "Cyan", "Forest"]
+        self.theme_var = tk.StringVar(value=themes[0])
+        theme_menu = ttk.OptionMenu(master, self.theme_var, *themes, command=self.change_theme)
+        theme_menu.pack(pady=5)
+
+        # Drawing canvas
+        self.canvas = tk.Canvas(master, width=600, height=400, bg="white")
+        self.canvas.pack(pady=10)
+
+        # Color options
+        self.colors = {
+            "Default": ["black", "red", "green", "blue", "yellow", "purple", "orange", "pink",
+                        "brown", "grey", "white"],
+            "Ocean": ["navy", "deep sky blue", "sky blue", "aquamarine", "light sea green",
+                      "light cyan", "medium aquamarine", "cadet blue", "pale turquoise", "turquoise"],
+            "Cyan": ["cyan", "light cyan", "dark cyan", "aquamarine", "turquoise", "light sea green",
+                     "medium aquamarine", "pale turquoise", "cadet blue", "powder blue", "deep sky blue"],
+            "Forest": ["forest green", "dark olive green", "olive drab", "dark green", "green",
+                       "lime green", "spring green", "medium sea green", "sea green", "dark sea green"]
+        }
+        self.color_var = tk.StringVar(value=self.colors["Default"][0])
+        color_menu = ttk.OptionMenu(master, self.color_var, *self.colors[self.theme_var.get()])
+        color_menu.pack(pady=5)
+
+        # Line width options
+        line_widths = [1, 2, 3, 5, 10]
+        self.line_width_var = tk.IntVar(value=line_widths[0])
+        line_width_menu = ttk.OptionMenu(master, self.line_width_var, *line_widths)
+        line_width_menu.pack(pady=5)
+
+        # Tool options
+        self.tool_var = tk.StringVar(value="pen")
+        pen_radio = ttk.Radiobutton(master,
+                                    text="Pen",
+                                    variable=self.tool_var,
+                                    value="pen")
+        pen_radio.pack(pady=5, anchor="w")
+        brush_radio = ttk.Radiobutton(master,
+                                      text="Brush",
+                                      variable=self.tool_var,
+                                      value="brush")
+        brush_radio.pack(pady=5, anchor="w")
+
+        # Remove and Undo buttons
+        button_frame = tk.Frame(master)
+        button_frame.pack(pady=5)
+        remove_button = ttk.Button(button_frame,
+                                   text="Remove All",
+                                   command=self.remove_all)
+        remove_button.pack(side="left", padx=5)
+        undo_button = ttk.Button(button_frame,
+                                 text="Undo",
+                                 command=self.undo)
+        undo_button.pack(side="left", padx=5)
+
+        # Save button
+        save_button = ttk.Button(master,
+                                 text="Save",
+                                 command=self.save_drawing)
+        save_button.pack(pady=5)
+
+        # Drawing functions
+        self.drawing = False
+        self.last_x, self.last_y = None, None
+        self.drawn_items = []  # List to store drawn items
+
+        # Mouse events
+        self.canvas.bind("<Button-1>", self.start_drawing)
+        self.canvas.bind("<B1-Motion>", self.draw)
+        self.canvas.bind("<ButtonRelease-1>", self.end_drawing)
+
+    def start_drawing(self, event):
+        self.drawing = True
+        self.last_x, self.last_y = event.x, event.y
+
+    def draw(self, event):
+        if self.drawing:
+            color = self.color_var.get()
+            width = self.line_width_var.get()
+            tool = self.tool_var.get()
+            if tool == "pen":
+                item = self.canvas.create_line(self.last_x,
+                                               self.last_y,
+                                               event.x,
+                                               event.y,
+                                               fill=color,
+                                               width=width)
+            elif tool == "brush":
+                item = self.canvas.create_oval(event.x - width // 2,
+                                               event.y - width // 2,
+                                               event.x + width // 2,
+                                               event.y + width // 2,
+                                               fill=color,
+                                               outline=color)
+            self.drawn_items.append(item)  # Add drawn item to the list
+            self.last_x, self.last_y = event.x, event.y
+
+    def end_drawing(self, event):
+        self.drawing = False
+
+    def remove_all(self):
+        self.canvas.delete("all")
+        self.drawn_items = []  # Clear the drawn items list
+
+    def undo(self):
+        if self.drawn_items:
+            item_to_undo = self.drawn_items.pop()  # Remove the last item from the list
+            self.canvas.delete(item_to_undo)  # Delete the corresponding item from the canvas
+
+    def change_theme(self, event):
+        selected_theme = self.theme_var.get()
+        colors = self.colors[selected_theme]
+        self.color_var.set(colors[0])
+        color_menu = ttk.OptionMenu(self.master, self.color_var, *colors)
+        color_menu.pack_forget()
+        color_menu.pack(pady=5)
+
+        # Change canvas background based on theme
+        if selected_theme == "Ocean":
+            self.canvas.config(bg="light blue")
+        elif selected_theme == "Cyan":
+            self.canvas.config(bg="light cyan")
+        elif selected_theme == "Forest":
+            self.canvas.config(bg="light green")
+        else:
+            self.canvas.config(bg="white")
+
+    def save_drawing(self):
+        file_path = filedialog.asksaveasfilename(defaultextension=".png",
+                                                 filetypes=[("PNG files", ".png"), ("All files", ".*")])
+        if file_path:
+            self.canvas.postscript(file=file_path, colormode='color')
+
+
+# Create main window
+root = tk.Tk()
+app = DrawingApplication(root)
+root.mainloop()
